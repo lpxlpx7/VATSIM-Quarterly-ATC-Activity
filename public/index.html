@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A simple quarterly VATSIM ATC activity viewer.">
+  <meta name="theme-color" content="#f5f5f7">
+  <title>VATSIM ATC Activity</title>
+  <link rel="stylesheet" href="/site-v4.css">
+  <script src="/app-v4.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav shell" aria-label="Primary navigation">
+      <a class="brand" href="#top">VATSIM Quarterly ATC Activity</a>
+      <div class="nav-actions"><form class="login-form" action="/auth.php?action=login" method="get"><button id="login-entry" class="login-link login-button" type="submit">Login</button></form><div id="user-menu" class="user-menu" hidden><button id="user-button" class="user-button" type="button" aria-expanded="false"><span id="user-name">—</span><span id="user-cid">CID —</span></button><div id="user-dropdown" class="user-dropdown" hidden><button id="logout" type="button">Sign out</button></div></div></div>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="hero-copy">
+        <h1>Have you met<br><span>your controller time?</span></h1>
+        <p class="hero-lead">Check your current quarter activity by Division and ARTCC.</p>
+      </div>
+      <div class="login-card">
+        <div class="card-top"><span class="card-kicker">Start here</span></div>
+        <label for="cid">VATSIM CID</label>
+        <div class="input-row">
+          <input id="cid" inputmode="numeric" autocomplete="off" placeholder="e.g. 1234567" aria-describedby="cid-help">
+          <button id="connect" class="button button-primary" type="button">Connect</button>
+        </div>
+        <p id="cid-help" class="field-help">Sign in with VATSIM Connect Sandbox, or preview sample data below.</p>
+        <button id="demo" class="demo-link" type="button">Preview sample data</button>
+        <p id="activity-status" class="message" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="dashboard shell" aria-labelledby="summary-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">CURRENT QUARTER</p>
+          <h2 id="summary-title">Your activity.</h2>
+        </div>
+      </div>
+      <section class="quarter-display" aria-label="Quarter dates">
+        <h3 id="quarter-name">Q—</h3>
+        <div class="time-grid">
+          <article><h4>UTC</h4><dl><dt>Start</dt><dd id="utc-start">—</dd><dt>End (exclusive)</dt><dd id="utc-end">—</dd></dl></article>
+          <article><h4 id="local-zone">Your local time</h4><dl><dt>Start</dt><dd id="local-start">—</dd><dt>End (exclusive)</dt><dd id="local-end">—</dd></dl></article>
+        </div>
+      </section>
+
+      <div class="summary-grid">
+        <article class="stat-card total-time-card"><p>Total time</p><strong id="total-time">—</strong><span>across all facilities</span></article>
+        <article class="stat-card"><p>Records</p><strong id="session-count">—</strong><span>ATC records counted</span></article>
+        <article class="stat-card"><p>Areas</p><strong id="region-count">—</strong><span>Divisions and ARTCCs</span></article>
+      </div>
+
+      <div class="content-grid">
+        <section class="panel region-panel">
+          <div class="panel-heading"><div><h3>Your time by area.</h3></div><span id="data-label" class="data-label">Waiting for CID</span></div>
+          <div id="regions" class="region-list"><div class="empty-state">Connect your VATSIM account to load ATC time.</div></div>
+        </section>
+      </div>
+      <p class="results-note">Data may be incomplete or inaccurate. Totals are estimates, not an official compliance decision.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer shell">
+    <span>© 2026 Jurina · Independent community project. Not endorsed by VATSIM.</span>
+    <span class="footer-links">
+      <a href="mailto:dev@jurina.org">dev@jurina.org</a>
+      <a class="github-link" href="https://github.com/lpxlpx7/VATSIM-Quarterly-ATC-Activity" target="_blank" rel="noopener noreferrer"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a12 12 0 0 0-3.79 23.39c.6.11.82-.26.82-.58v-2.04c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.74.08-.74 1.2.08 1.83 1.23 1.83 1.23 1.07 1.83 2.8 1.3 3.48 1 .11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.38 1.23-3.22-.12-.3-.53-1.52.12-3.17 0 0 1-.32 3.3 1.23a11.46 11.46 0 0 1 6.01 0c2.3-1.55 3.3-1.23 3.3-1.23.65 1.65.24 2.87.12 3.17.76.84 1.23 1.91 1.23 3.22 0 4.62-2.81 5.64-5.49 5.94.43.37.81 1.1.81 2.22v3.29c0 .32.22.69.83.57A12 12 0 0 0 12 .5Z"/></svg><span>Open source on GitHub</span></a>
+      <button class="footer-button" type="button" data-modal="data-modal">Data handling</button>
+      <button class="footer-button" type="button" data-modal="policy-modal">Policy notes</button>
+    </span>
+  </footer>
+  <div id="data-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="data-modal-title"><div class="modal-backdrop" data-close-modal></div><section class="modal-card"><button class="modal-close" type="button" aria-label="Close" data-close-modal>×</button><p class="eyebrow">DATA HANDLING</p><h2 id="data-modal-title">Data handling.</h2><p>This independent project uses a VATSIM CID and historical ATC records only to calculate quarterly totals. It does not need your password.</p><p>There is no account database. The server does not store usernames, passwords, access tokens, refresh tokens, or VATSIM login cookies. A short-lived random session ID may exist in server memory only and is removed on sign out or server restart.</p><p>This project is designed around California privacy principles, including data minimisation, purpose limitation, transparency, and reasonable security practices. It does not sell personal information or use it for targeted advertising.</p></section></div>
+  <div id="policy-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="policy-modal-title"><div class="modal-backdrop" data-close-modal></div><section class="modal-card"><button class="modal-close" type="button" aria-label="Close" data-close-modal>×</button><p class="eyebrow">POLICY NOTES</p><h2 id="policy-modal-title">Scope and accuracy.</h2><p>Results are estimates and may be incomplete or inaccurate. They are not an official VATSIM compliance decision.</p><p>Current scope includes broad Division totals and the initial VATUSA ARTCC mapping. It does not fully evaluate every local roster, visiting-controller rule, rating rule, or activity exception.</p><p>Use the current official VATSIM, Division, and ARTCC guidance for any final determination.</p></section></div>
+</body>
+</html>

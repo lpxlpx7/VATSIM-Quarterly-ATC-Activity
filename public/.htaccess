@@ -1,0 +1,8 @@
+Options -Indexes
+DirectoryIndex index.html
+<FilesMatch "^\.(env|git|svn)|\.(env|key|pem|crt|secret|log)$">
+  Require all denied
+</FilesMatch>
+<FilesMatch "^(lib|server)\.php$">
+  Require all denied
+</FilesMatch>
