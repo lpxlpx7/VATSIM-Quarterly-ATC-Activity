@@ -24,6 +24,11 @@ function session_minutes(array $record, array $quarter): float { $item = session
 function classify_session(array $record): array {
     $call = session_callsign($record);
     $prefix = explode('_', $call)[0];
+    $vatspyFIR = vatspy_fir_for_callsign($call);
+    if ($vatspyFIR !== null) {
+        $division = $vatspyFIR['division'];
+        if ($division !== 'Other divisions') return [$division, $division];
+    }
     $airport = airport_lookup($prefix);
     if ($airport !== null) {
         $division = $airport['division'] ?: 'Other divisions';
@@ -61,6 +66,30 @@ function classify_session(array $record): array {
     $divisions = ['PRC'=>'VATPRC','AUS'=>'VATPAC','NZ'=>'VATNZ','JPN'=>'VATJPN','KOR'=>'VATKOR','UK'=>'VATSIM UK','DE'=>'VATSIM Germany','FRA'=>'VATSIM France','ITA'=>'VATSIM Italy','CHE'=>'VATSIM Switzerland','AUT'=>'VATSIM Austria','CAN'=>'VATCAN'];
     foreach ($divisions as $key => $name) if (substr($prefix, 0, strlen($key)) === $key || substr($prefix, 0, strlen('VAT' . $key)) === 'VAT' . $key) return [$name, $name];
     return ['Other divisions', 'Other divisions'];
+}
+function vatspy_fir_for_callsign(string $callsign): ?array {
+    static $db = null;
+    static $failed = false;
+    if ($failed) return null;
+    if ($db === null) {
+        if (!extension_loaded('pdo_sqlite') || !is_file(__DIR__ . DIRECTORY_SEPARATOR . 'vatsim.sqlite')) { $failed = true; return null; }
+        $db = new PDO('sqlite:' . __DIR__ . DIRECTORY_SEPARATOR . 'vatsim.sqlite');
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    }
+    $statement = $db->query('SELECT prefix, code FROM firs WHERE prefix IS NOT NULL AND prefix <> "" ORDER BY LENGTH(prefix) DESC');
+    foreach ($statement as $fir) {
+        if (substr($callsign, 0, strlen($fir['prefix'])) === $fir['prefix']) {
+            return ['code' => $fir['code'], 'division' => division_from_fir($fir['code'])];
+        }
+    }
+    return null;
+}
+function division_from_fir(string $fir): string {
+    if (substr($fir, 0, 2) === 'KZ') return 'VATUSA';
+    if (substr($fir, 0, 2) === 'CZ' || substr($fir, 0, 2) === 'CY') return 'VATCAN';
+    if (substr($fir, 0, 1) === 'Z') return 'VATPRC';
+    $prefix = substr($fir, 0, 2);
+    return ['EG'=>'VATSIM UK','ED'=>'VATSIM Germany','ET'=>'VATSIM Germany','LF'=>'VATSIM France','LI'=>'VATSIM Italy','LS'=>'VATSIM Switzerland','LO'=>'VATSIM Austria','RJ'=>'VATJPN','RO'=>'VATJPN','RK'=>'VATKOR','NZ'=>'VATNZ','Y'=>'VATPAC'][$prefix] ?? 'Other divisions';
 }
 function airport_lookup(string $code): ?array {
     static $db = null;
