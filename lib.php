@@ -14,7 +14,8 @@ function env_value(string $key, string $default = ''): string {
 }
 function json_response(array $data, int $status = 200): void { header('Content-Type: application/json; charset=utf-8'); header('Cache-Control: no-store'); http_response_code($status); echo json_encode($data, JSON_UNESCAPED_UNICODE); exit;
 }
-function current_quarter(): array { $year = (int)gmdate('Y'); $month = (int)gmdate('n'); $quarter = intdiv($month - 1, 3); return ['start' => gmmktime(0, 0, 0, $quarter * 3 + 1, 1, $year), 'end' => gmmktime(0, 0, 0, $quarter * 3 + 4, 1, $year), 'number' => $quarter + 1, 'year' => $year]; }
+function current_quarter(int $offset = 0): array { $year = (int)gmdate('Y'); $month = (int)gmdate('n'); $quarter = intdiv($month - 1, 3) + $offset; $year += (int)floor($quarter / 4); $quarter = (($quarter % 4) + 4) % 4; return ['start' => gmmktime(0, 0, 0, $quarter * 3 + 1, 1, $year), 'end' => gmmktime(0, 0, 0, $quarter * 3 + 4, 1, $year), 'number' => $quarter + 1, 'year' => $year]; }
+function requested_quarter(): array { $value = strtoupper(trim((string)($_GET['quarter'] ?? ''))); if ($value === '') return current_quarter(); if (!preg_match('/^(\d{4})-Q([1-4])$/', $value, $match)) throw new InvalidArgumentException('Invalid quarter.'); $year = (int)$match[1]; $number = (int)$match[2]; if ($year < 2000 || $year > (int)gmdate('Y') + 1) throw new InvalidArgumentException('Invalid quarter.'); $start = gmmktime(0, 0, 0, ($number - 1) * 3 + 1, 1, $year); return ['start' => $start, 'end' => gmmktime(0, 0, 0, $number * 3 + 1, 1, $year), 'number' => $number, 'year' => $year]; }
 function ca_bundle(): string { $configured = env_value('VATSIM_CA_BUNDLE'); $iniDir = defined('PHP_INI_DIR') ? PHP_INI_DIR : ''; $candidates = array_filter([$configured, __DIR__ . DIRECTORY_SEPARATOR . 'cacert.pem', $iniDir . DIRECTORY_SEPARATOR . 'extras' . DIRECTORY_SEPARATOR . 'ssl' . DIRECTORY_SEPARATOR . 'cacert.pem', $iniDir . DIRECTORY_SEPARATOR . 'extras' . DIRECTORY_SEPARATOR . 'ssl' . DIRECTORY_SEPARATOR . 'cert.pem']); foreach ($candidates as $candidate) if (is_file($candidate)) return $candidate; return ''; }
 function http_json(string $url, ?array $post = null, array $headers = []): array { $ch = curl_init($url); $options = [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 30, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_HTTPHEADER => $headers, CURLOPT_USERAGENT => 'VATSIM-Quarterly-ATC-Activity/1.0', CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2]; $ca = ca_bundle(); if ($ca !== '') $options[CURLOPT_CAINFO] = $ca; curl_setopt_array($ch, $options); if ($post !== null) { curl_setopt($ch, CURLOPT_POST, true); curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post)); } $body = curl_exec($ch); $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $error = curl_error($ch); curl_close($ch); if ($body === false || $error) throw new RuntimeException(($error ?: 'Upstream request failed.') . ($ca === '' ? ' Configure VATSIM_CA_BUNDLE or place cacert.pem beside lib.php.' : '')); $data = json_decode($body, true); if (!is_array($data)) throw new RuntimeException('Invalid upstream response.'); return [$status, $data]; }
 function vatsim_history(string $cid, int $quarterStart): array { $records = []; $offset = 0; $limit = 500; do { [$status, $payload] = http_json("https://api.vatsim.net/v2/members/" . rawurlencode($cid) . "/atc?limit=$limit&offset=$offset", null, ['Accept: application/json']); if ($status !== 200) throw new RuntimeException($payload['detail'] ?? "VATSIM API returned $status."); $items = $payload['items'] ?? []; $records = array_merge($records, $items); $offset += count($items); $oldest = PHP_INT_MAX; foreach ($items as $item) $oldest = min($oldest, strtotime($item['connection_id']['start'] ?? 'now')); } while (count($items) === $limit && $offset < ($payload['count'] ?? 0) && $oldest >= $quarterStart); return $records; }
@@ -24,9 +25,18 @@ function session_minutes(array $record, array $quarter): float { $item = session
 function classify_session(array $record): array {
     $call = session_callsign($record);
     $prefix = explode('_', $call)[0];
+
+    // These special callsigns do not all follow a normal airport/FIR prefix.
+    // NY is New York ARTCC, NAT is intentionally kept in Other divisions,
+    // and ZAK is Oakland ARTCC (ZOA).
+    if ($prefix === 'NY') return ['VATUSA', 'ARTCC · New York'];
+    if ($prefix === 'NAT') return ['Other divisions', 'Other divisions'];
+    if ($prefix === 'ZAK') return ['VATUSA', 'ARTCC · Oakland'];
+
     $vatspyFIR = vatspy_fir_for_callsign($call);
     if ($vatspyFIR !== null) {
         $division = $vatspyFIR['division'];
+        if ($division === 'VATUSA') return ['VATUSA', 'ARTCC · ' . artcc_name_from_fir($vatspyFIR['code'])];
         if ($division !== 'Other divisions') return [$division, $division];
     }
     $airport = airport_lookup($prefix);
@@ -47,7 +57,7 @@ function classify_session(array $record): array {
         'LAX' => 'ZLA', 'BUR' => 'ZLA', 'SAN' => 'ZLA', 'SNA' => 'ZLA', 'ONT' => 'ZLA',
         'SFO' => 'ZOA', 'OAK' => 'ZOA', 'SJC' => 'ZOA', 'SMF' => 'ZOA',
         'ATL' => 'ZTL', 'BOS' => 'ZBW', 'DFW' => 'ZFW', 'HOU' => 'ZHU', 'IAH' => 'ZHU',
-        'MIA' => 'ZMA', 'FLL' => 'ZMA', 'JAX' => 'ZJX', 'DEN' => 'ZDV', 'PHX' => 'ZAB',
+        'MIA' => 'ZMA', 'FLL' => 'ZMA', 'JAX' => 'ZJX', 'BNA' => 'ZME', 'DEN' => 'ZDV', 'PHX' => 'ZAB',
         'SEA' => 'ZSE', 'PDX' => 'ZSE', 'ORD' => 'ZAU', 'MDW' => 'ZAU', 'DTW' => 'ZOB',
         'CLE' => 'ZOB', 'PIT' => 'ZOB', 'PHL' => 'ZNY', 'EWR' => 'ZNY', 'JFK' => 'ZNY',
         'LGA' => 'ZNY', 'DCA' => 'ZDC', 'IAD' => 'ZDC', 'BWI' => 'ZDC', 'RDU' => 'ZDC',
@@ -78,6 +88,9 @@ function vatspy_fir_for_callsign(string $callsign): ?array {
     }
     $statement = $db->query('SELECT prefix, code FROM firs WHERE prefix IS NOT NULL AND prefix <> "" ORDER BY LENGTH(prefix) DESC');
     foreach ($statement as $fir) {
+        // NAT has an intentionally empty VATSpy prefix. It is metadata for the
+        // FIR itself, not a wildcard callsign prefix.
+        if ((string)$fir['prefix'] === '') continue;
         if (substr($callsign, 0, strlen($fir['prefix'])) === $fir['prefix']) {
             return ['code' => $fir['code'], 'division' => division_from_fir($fir['code'])];
         }
@@ -85,12 +98,14 @@ function vatspy_fir_for_callsign(string $callsign): ?array {
     return null;
 }
 function division_from_fir(string $fir): string {
+    if ($fir === 'NAT') return 'Other divisions';
     if (substr($fir, 0, 2) === 'KZ') return 'VATUSA';
     if (substr($fir, 0, 2) === 'CZ' || substr($fir, 0, 2) === 'CY') return 'VATCAN';
     if (substr($fir, 0, 1) === 'Z') return 'VATPRC';
     $prefix = substr($fir, 0, 2);
     return ['EG'=>'VATSIM UK','ED'=>'VATSIM Germany','ET'=>'VATSIM Germany','LF'=>'VATSIM France','LI'=>'VATSIM Italy','LS'=>'VATSIM Switzerland','LO'=>'VATSIM Austria','RJ'=>'VATJPN','RO'=>'VATJPN','RK'=>'VATKOR','NZ'=>'VATNZ','Y'=>'VATPAC'][$prefix] ?? 'Other divisions';
 }
+function artcc_name_from_fir(string $fir): string { return ['KZAK' => 'Oakland', 'KZNY' => 'New York', 'KZNY-W' => 'New York'][$fir] ?? artcc_name(str_replace('K', '', $fir)); }
 function airport_lookup(string $code): ?array {
     static $db = null;
     static $failed = false;

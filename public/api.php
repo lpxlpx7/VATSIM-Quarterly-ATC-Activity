@@ -8,7 +8,7 @@ if (!preg_match('/^\d{3,10}$/', $cid)) {
     json_response(['error' => 'Invalid CID.'], 400);
 }
 
-$quarter = current_quarter();
+try { $quarter = requested_quarter(); } catch (InvalidArgumentException $error) { json_response(['error' => $error->getMessage()], 400); }
 $records = vatsim_history($cid, $quarter['start']);
 $groups = [];
 $recordCount = 0;
@@ -41,4 +41,4 @@ foreach ($groups as $name => $areas) {
 }
 usort($divisions, fn($a, $b) => $b['minutes'] <=> $a['minutes']);
 $total = array_sum(array_column($divisions, 'minutes'));
-json_response(['totalMinutes' => $total, 'recordCount' => $recordCount, 'areaCount' => array_sum(array_map(fn($d) => count($d['areas']), $divisions)), 'maxMinutes' => $divisions[0]['minutes'] ?? 1, 'divisions' => $divisions]);
+json_response(['totalMinutes' => $total, 'recordCount' => $recordCount, 'areaCount' => array_sum(array_map(fn($d) => count($d['areas']), $divisions)), 'maxMinutes' => $divisions[0]['minutes'] ?? 1, 'divisions' => $divisions, 'quarter' => ['year' => $quarter['year'], 'number' => $quarter['number'], 'start' => gmdate('c', $quarter['start']), 'end' => gmdate('c', $quarter['end'])]]);
