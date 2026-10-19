@@ -33,17 +33,22 @@ function classify_session(array $record): array {
     if ($prefix === 'NAT') return ['Other divisions', 'Other divisions'];
     if ($prefix === 'ZAK') return ['VATUSA', 'ARTCC · Oakland'];
 
-    $vatspyFIR = vatspy_fir_for_callsign($call);
-    if ($vatspyFIR !== null) {
-        $division = $vatspyFIR['division'];
-        if ($division === 'VATUSA') return ['VATUSA', 'ARTCC · ' . artcc_name_from_fir($vatspyFIR['code'])];
-        if ($division !== 'Other divisions') return [$division, $division];
-    }
-    $airport = airport_lookup($prefix);
+    // VATSpy local-position rule: resolve the airport identifier before FIR
+    // prefixes. Four-letter identifiers are ICAO (ZSPD/KLAS); three-letter
+    // US identifiers are FAA codes and resolve to K + code (LAS -> KLAS).
+    // This prevents a short FIR prefix such as LA from capturing LAS_E_TWR.
+    $airport = vatspy_airport_for_callsign($prefix);
     if ($airport !== null) {
         $division = $airport['division'] ?: 'Other divisions';
         $artcc = $airport['artcc'] ?: '';
         if ($division === 'VATUSA' && $artcc !== '') return ['VATUSA', 'ARTCC · ' . artcc_name($artcc)];
+        if ($division !== 'Other divisions') return [$division, $division];
+    }
+
+    $vatspyFIR = vatspy_fir_for_callsign($call);
+    if ($vatspyFIR !== null) {
+        $division = $vatspyFIR['division'];
+        if ($division === 'VATUSA') return ['VATUSA', 'ARTCC · ' . artcc_name_from_fir($vatspyFIR['code'])];
         if ($division !== 'Other divisions') return [$division, $division];
     }
     $artccs = ['ZAB'=>'Albuquerque','ZAK'=>'Oakland Oceanic','ZAN'=>'Anchorage','ZAU'=>'Chicago','ZBW'=>'Boston','ZDC'=>'Washington','ZDV'=>'Denver','ZFW'=>'Fort Worth','ZHU'=>'Houston','ZID'=>'Indianapolis','ZJX'=>'Jacksonville','ZKC'=>'Kansas City','ZLA'=>'Los Angeles','ZLC'=>'Salt Lake','ZMA'=>'Miami','ZME'=>'Memphis','ZMP'=>'Minneapolis','ZNY'=>'New York','ZOA'=>'Oakland','ZOB'=>'Cleveland','ZSE'=>'Seattle','ZTL'=>'Atlanta'];
@@ -106,7 +111,7 @@ function division_from_fir(string $fir): string {
     return ['EG'=>'VATSIM UK','ED'=>'VATSIM Germany','ET'=>'VATSIM Germany','LF'=>'VATSIM France','LI'=>'VATSIM Italy','LS'=>'VATSIM Switzerland','LO'=>'VATSIM Austria','RJ'=>'VATJPN','RO'=>'VATJPN','RK'=>'VATKOR','NZ'=>'VATNZ','Y'=>'VATPAC'][$prefix] ?? 'Other divisions';
 }
 function artcc_name_from_fir(string $fir): string { return ['KZAK' => 'Oakland', 'KZNY' => 'New York', 'KZNY-W' => 'New York'][$fir] ?? artcc_name(str_replace('K', '', $fir)); }
-function airport_lookup(string $code): ?array {
+function vatspy_airport_for_callsign(string $code): ?array {
     static $db = null;
     static $failed = false;
     if ($failed) return null;
@@ -115,14 +120,15 @@ function airport_lookup(string $code): ?array {
         $db = new PDO('sqlite:' . __DIR__ . DIRECTORY_SEPARATOR . 'vatsim.sqlite');
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     }
-    $statement = $db->prepare('SELECT icao, name, fir, division, artcc FROM airports WHERE icao = :code LIMIT 1');
-    $statement->execute([':code' => $code]);
-    $airport = $statement->fetch(PDO::FETCH_ASSOC);
-    if ($airport !== false) return $airport;
-    $statement = $db->prepare('SELECT icao, name, fir, division, artcc FROM airports WHERE iata = :code LIMIT 1');
-    $statement->execute([':code' => $code]);
-    $airport = $statement->fetch(PDO::FETCH_ASSOC);
-    return $airport === false ? null : $airport;
+    $code = strtoupper(trim($code));
+    $candidates = strlen($code) === 3 ? [$code, 'K' . $code] : [$code];
+    foreach (array_values(array_unique($candidates)) as $candidate) {
+        $statement = $db->prepare('SELECT icao, name, fir, division, artcc FROM airports WHERE icao = :code LIMIT 1');
+        $statement->execute([':code' => $candidate]);
+        $airport = $statement->fetch(PDO::FETCH_ASSOC);
+        if ($airport !== false) return $airport;
+    }
+    return null;
 }
 function artcc_name(string $code): string {
     $names = ['ZAB'=>'Albuquerque','ZAK'=>'Oakland Oceanic','ZAN'=>'Anchorage','ZAU'=>'Chicago','ZBW'=>'Boston','ZDC'=>'Washington','ZDV'=>'Denver','ZFW'=>'Fort Worth','ZHU'=>'Houston','ZID'=>'Indianapolis','ZJX'=>'Jacksonville','ZKC'=>'Kansas City','ZLA'=>'Los Angeles','ZLC'=>'Salt Lake','ZMA'=>'Miami','ZME'=>'Memphis','ZMP'=>'Minneapolis','ZNY'=>'New York','ZOA'=>'Oakland','ZOB'=>'Cleveland','ZSE'=>'Seattle','ZTL'=>'Atlanta'];
