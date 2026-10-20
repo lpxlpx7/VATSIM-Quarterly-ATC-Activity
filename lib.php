@@ -158,6 +158,12 @@ function division_result(string $division, string $area, string $fallbackArtcc =
     return [$name, $area !== '' ? $area : $name];
 }
 
+// vNAS facility -> display pair. San Juan CERAP (ZSU) runs on vNAS but belongs to VATCAR.
+function vnas_result(string $artcc): array {
+    if ($artcc === 'ZSU') return division_result('CAR', 'San Juan');
+    return division_result('USA', $artcc);
+}
+
 function us_artcc_for_fir(string $fir): string {
     $special = ['KZAK' => 'ZOA', 'KZA1' => 'ZOA', 'PHZH' => 'ZHN', 'PGZU' => 'ZUA'];
     if (isset($special[$fir])) return $special[$fir];
@@ -202,11 +208,11 @@ function classify_airport(string $icao): ?array {
     if ($fir !== '' && ($fir === 'NZCM' || $icao[0] === 'X' || preg_match('/\d/', $icao) || !icao_country($icao) || $icao === 'GUAM')) return classify_fir($fir);
     if ($icao[0] === 'K' || ($fir !== '' && substr($fir, 0, 4) === 'PAZA')) {
         $artcc = $us[substr($icao, 1)] ?? $us[$icao] ?? us_artcc_for_fir($fir);
-        return division_result('USA', $artcc);
+        return vnas_result($artcc);
     }
     $country = icao_country($icao);
     if ($country === null) return $fir !== '' ? classify_fir($fir) : null;
-    if ($country[0] === 'USA') return division_result('USA', $us[substr($icao, 1)] ?? $us[$icao] ?? (us_artcc_for_fir($fir) ?: $country[1]));
+    if ($country[0] === 'USA') return vnas_result($us[substr($icao, 1)] ?? $us[$icao] ?? (us_artcc_for_fir($fir) ?: $country[1]));
     if ($country[0] === 'CAN') return division_result('CAN', canada_area_for_fir($fir));
     if ($country[0] === 'UK' && $fir !== '') return classify_fir($fir) ?? division_result(...$country);
     return division_result($country[0], $country[1]);
@@ -279,9 +285,9 @@ function classify_callsign(string $callsign): array {
     $fir = fir_for_segments($parts);
     if ($enroute) {
         if ($fir !== null) { $result = classify_fir($fir); if ($result !== null) return $result; }
-        if ($usArtcc !== null) return division_result('USA', $usArtcc);
+        if ($usArtcc !== null) return vnas_result($usArtcc);
     } elseif ($usArtcc !== null) {
-        return division_result('USA', $usArtcc);
+        return vnas_result($usArtcc);
     }
 
     // 3. Airport identifier.
