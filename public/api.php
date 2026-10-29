@@ -9,7 +9,7 @@ if (!preg_match('/^\d{3,10}$/', $cid)) {
 }
 
 try { $quarter = requested_quarter(); } catch (InvalidArgumentException $error) { json_response(['error' => $error->getMessage()], 400); }
-$records = vatsim_history($cid, $quarter['start']);
+try { $records = vatsim_history($cid, $quarter['start']); } catch (Throwable $error) { json_response(['error' => 'VATSIM API request failed: ' . $error->getMessage()], 502); }
 $groups = [];
 $recordCount = 0;
 
