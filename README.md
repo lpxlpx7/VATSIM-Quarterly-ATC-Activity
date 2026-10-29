@@ -20,7 +20,6 @@ project/
    ├─ app-v4.js
    ├─ site-v4.css
    ├─ api.php
-   ├─ auth.php
    └─ .htaccess
 ```
 
@@ -32,7 +31,7 @@ Set the website root to:
 project/public
 ```
 
-Enable PHP with cURL and sessions. No Node.js, PM2, or SQL database is required.
+Enable PHP with cURL. No Node.js, PM2, or SQL database is required.
 Callsign lookup data lives in `callsign-data.php` (a plain PHP array), so `pdo_sqlite` is **not** required at runtime. It is generated from `vatsim.sqlite` (17,809 airports and 1,235 FIR records from the VATSpy data project) and `tools/vnas_facilities.json` (the VATUSA vNAS facility tree: every ARTCC, TRACON, tower and position prefix). After updating either source, rebuild it locally with:
 
 ```bash
@@ -43,42 +42,18 @@ php tools/build-callsign-data.php
 
 ## Environment
 
-Create `.env` in the project root:
+Optionally create `.env` in the project root (it must remain outside `public`):
 
 ```env
-VATSIM_CLIENT_ID=your-sandbox-client-id
-VATSIM_CLIENT_SECRET=your-sandbox-client-secret
-VATSIM_REDIRECT_URI=https://vqaa.jurina.org/auth/callback
 VATSIM_CA_BUNDLE=C:\php\extras\ssl\cacert.pem
 ```
 
-Register this exact redirect URI in the VATSIM Connect Sandbox OAuth client:
-
-```text
-https://vqaa.jurina.org/auth.php?action=callback
-```
-
-Both callback URLs are supported:
-
-```text
-https://vqaa.jurina.org/auth.php?action=callback
-https://vqaa.jurina.org/auth/callback
-```
-
-The second URL is a compatibility endpoint for the OAuth client you already registered.
-
-The `.env` file must remain outside `public`. The included `.htaccess` also disables directory listing and blocks sensitive files.
-
-If Windows PHP reports `unable to get local issuer certificate`, download `https://curl.se/ca/cacert.pem`, save it outside `public`, and set `VATSIM_CA_BUNDLE` to its full path. SSL certificate verification remains enabled.
+If Windows PHP reports `unable to get local issuer certificate`, download `https://curl.se/ca/cacert.pem`, save it outside `public`, and set `VATSIM_CA_BUNDLE` to its full path. SSL certificate verification remains enabled. The included `.htaccess` also disables directory listing and blocks sensitive files.
 
 ## Endpoints
 
 ```text
 GET /api.php?cid=1749073
-GET /auth.php?action=login
-GET /auth.php?action=callback&code=...
-GET /auth.php?action=status
-GET /auth.php?action=logout
 ```
 
 ATC history is fetched server-side from the VATSIM API. Classification and quarter aggregation stay on the server; the browser receives only the calculated summary.
@@ -95,18 +70,3 @@ Only airspace without a Division (shared NAT oceanic, Mongolia, North Korea, Ant
 
 The result is an estimate and may be incomplete or inaccurate. It is not an official VATSIM compliance decision.
 
-## Optional Nginx compatibility rewrite
-
-If the OAuth client is already registered with `/auth/callback`, add this rule to the site's Nginx configuration, then reload Nginx:
-
-```nginx
-location = /auth/callback {
-    rewrite ^/auth/callback$ /auth.php?action=callback&$query_string last;
-}
-```
-
-The direct PHP redirect URI is:
-
-```text
-https://vqaa.jurina.org/auth.php?action=callback
-```

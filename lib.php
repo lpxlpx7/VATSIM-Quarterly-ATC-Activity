@@ -305,6 +305,3 @@ function classify_callsign(string $callsign): array {
 
 function classify_session(array $record): array { return classify_callsign(session_callsign($record)); }
 
-function oauth_configured(): bool { return env_value('VATSIM_CLIENT_ID') !== '' && env_value('VATSIM_CLIENT_SECRET') !== ''; }
-function oauth_token(string $code): array { [$status, $data] = http_json('https://auth-dev.vatsim.net/oauth/token', ['grant_type'=>'authorization_code','client_id'=>env_value('VATSIM_CLIENT_ID'),'client_secret'=>env_value('VATSIM_CLIENT_SECRET'),'redirect_uri'=>env_value('VATSIM_REDIRECT_URI','https://vqaa.jurina.org/auth/callback'),'code'=>$code], ['Content-Type: application/x-www-form-urlencoded']); if ($status !== 200) throw new RuntimeException('VATSIM token exchange failed.'); return $data; }
-function vatsim_user(string $token): array { [$status, $data] = http_json('https://auth-dev.vatsim.net/api/user', null, ['Accept: application/json', 'Authorization: Bearer ' . $token]); if ($status !== 200) throw new RuntimeException('VATSIM user request failed.'); return $data; }
