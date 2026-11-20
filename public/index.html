@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A simple quarterly VATSIM ATC activity viewer.">
+  <meta name="description" content="Quarterly VATSIM ATC time by Division and ARTCC.">
   <meta name="theme-color" content="#f5f5f7">
   <title>VATSIM ATC Activity</title>
   <link rel="stylesheet" href="/site-v4.css">
@@ -19,17 +19,16 @@
   <main id="top">
     <section class="hero shell">
       <div class="hero-copy">
-        <h1>Have you met<br><span>your controller time?</span></h1>
-        <p class="hero-lead">Check your current quarter activity by Division and ARTCC.</p>
+        <h1>Check your<br><span>controller time.</span></h1>
+        <p class="hero-lead">See how many ATC hours you logged in a quarter, grouped by Division and ARTCC.</p>
       </div>
       <div class="login-card">
-        <div class="card-top"><span class="card-kicker">Start here</span></div>
         <label for="cid">VATSIM CID</label>
         <div class="input-row">
           <input id="cid" inputmode="numeric" autocomplete="off" placeholder="e.g. 1234567" aria-describedby="cid-help">
-          <button id="connect" class="button button-primary" type="button">Connect</button>
+          <button id="connect" class="button button-primary" type="button">Look up</button>
         </div>
-        <p id="cid-help" class="field-help">Enter your VATSIM CID, or preview sample data below.</p>
+        <p id="cid-help" class="field-help">Enter your CID, or try the sample data.</p>
         <button id="demo" class="demo-link" type="button">Preview sample data</button>
         <p id="activity-status" class="message" role="status" aria-live="polite"></p>
       </div>
@@ -38,12 +37,11 @@
     <section class="dashboard shell" aria-labelledby="summary-title">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">CURRENT QUARTER</p>
-          <h2 id="summary-title">Your activity.</h2>
+          <h2 id="summary-title">Your activity</h2>
         </div>
       </div>
        <section class="quarter-display" aria-label="Quarter dates">
-         <div class="quarter-heading"><div><p class="eyebrow">REPORTING PERIOD</p><h3 id="quarter-name">Q—</h3></div><div class="quarter-switch" role="group" aria-label="Select reporting quarter"><button class="quarter-option" type="button" data-quarter-offset="-1"><span class="quarter-option-label">Previous quarter</span><strong id="previous-quarter-name">Q—</strong><small id="previous-quarter-dates">—</small></button><button class="quarter-option is-selected" type="button" data-quarter-offset="0"><span class="quarter-option-label">Current quarter</span><strong id="current-quarter-name">Q—</strong><small id="current-quarter-dates">—</small></button></div></div>
+         <div class="quarter-heading"><div><h3 id="quarter-name">Q—</h3></div><div class="quarter-switch" role="group" aria-label="Select reporting quarter"><button class="quarter-option" type="button" data-quarter-offset="-1"><span class="quarter-option-label">Previous quarter</span><strong id="previous-quarter-name">Q—</strong><small id="previous-quarter-dates">—</small></button><button class="quarter-option is-selected" type="button" data-quarter-offset="0"><span class="quarter-option-label">Current quarter</span><strong id="current-quarter-name">Q—</strong><small id="current-quarter-dates">—</small></button></div></div>
         <div class="time-grid">
           <article><h4>UTC</h4><dl><dt>Start</dt><dd id="utc-start">—</dd><dt>End (exclusive)</dt><dd id="utc-end">—</dd></dl></article>
           <article><h4 id="local-zone">Your local time</h4><dl><dt>Start</dt><dd id="local-start">—</dd><dt>End (exclusive)</dt><dd id="local-end">—</dd></dl></article>
@@ -51,18 +49,18 @@
       </section>
 
       <div class="summary-grid">
-        <article class="stat-card total-time-card"><p>Total time</p><strong id="total-time">—</strong><span>across all facilities</span></article>
-        <article class="stat-card"><p>Records</p><strong id="session-count">—</strong><span>ATC records counted</span></article>
+        <article class="stat-card total-time-card"><p>Total time</p><strong id="total-time">—</strong><span>all positions</span></article>
+        <article class="stat-card"><p>Sessions</p><strong id="session-count">—</strong><span>ATC sessions counted</span></article>
         <article class="stat-card"><p>Areas</p><strong id="region-count">—</strong><span>Divisions and ARTCCs</span></article>
       </div>
 
       <div class="content-grid">
         <section class="panel region-panel">
-          <div class="panel-heading"><div><h3>Your time by area.</h3></div><span id="data-label" class="data-label">Waiting for CID</span></div>
-          <div id="regions" class="region-list"><div class="empty-state">Connect your VATSIM account to load ATC time.</div></div>
+          <div class="panel-heading"><div><h3>Your time by area</h3></div><span id="data-label" class="data-label">Waiting for CID</span></div>
+          <div id="regions" class="region-list"><div class="empty-state">Enter a CID to load ATC time.</div></div>
         </section>
       </div>
-      <p class="results-note">Data may be incomplete or inaccurate. Totals are estimates, not an official compliance decision.</p>
+      <p class="results-note">Totals are estimates and may be incomplete. They are not an official compliance decision.</p>
     </section>
   </main>
 
@@ -75,7 +73,7 @@
       <button class="footer-button" type="button" data-modal="policy-modal">Policy notes</button>
     </span>
   </footer>
-  <div id="data-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="data-modal-title"><div class="modal-backdrop" data-close-modal></div><section class="modal-card"><button class="modal-close" type="button" aria-label="Close" data-close-modal>×</button><p class="eyebrow">DATA HANDLING</p><h2 id="data-modal-title">Data handling.</h2><p>This independent project uses a VATSIM CID and historical ATC records only to calculate quarterly totals. It does not need your password.</p><p>There is no login and no account database. The server does not store usernames, passwords, or cookies.</p><p>This project is designed around California privacy principles, including data minimisation, purpose limitation, transparency, and reasonable security practices. It does not sell personal information or use it for targeted advertising.</p></section></div>
-  <div id="policy-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="policy-modal-title"><div class="modal-backdrop" data-close-modal></div><section class="modal-card"><button class="modal-close" type="button" aria-label="Close" data-close-modal>×</button><p class="eyebrow">POLICY NOTES</p><h2 id="policy-modal-title">Scope and accuracy.</h2><p>Results are estimates and may be incomplete or inaccurate. They are not an official VATSIM compliance decision.</p><p>Current scope includes broad Division totals and the initial VATUSA ARTCC mapping. It does not fully evaluate every local roster, visiting-controller rule, rating rule, or activity exception.</p><p>Use the current official VATSIM, Division, and ARTCC guidance for any final determination.</p></section></div>
+  <div id="data-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="data-modal-title"><div class="modal-backdrop" data-close-modal></div><section class="modal-card"><button class="modal-close" type="button" aria-label="Close" data-close-modal>×</button><h2 id="data-modal-title">How your CID is used</h2><p>This project uses your VATSIM CID and your historical ATC records to calculate quarterly totals, and for nothing else. It never asks for your password.</p><p>There is no login and no account database. The server does not store usernames, passwords, or cookies.</p><p>It collects only what the calculation needs. It does not sell personal information or use it for targeted advertising.</p></section></div>
+  <div id="policy-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="policy-modal-title"><div class="modal-backdrop" data-close-modal></div><section class="modal-card"><button class="modal-close" type="button" aria-label="Close" data-close-modal>×</button><h2 id="policy-modal-title">Scope and accuracy</h2><p>Results are estimates and may be incomplete or inaccurate. They are not an official VATSIM compliance decision.</p><p>The tool currently covers Division totals and a first pass at VATUSA ARTCC mapping. It does not check local rosters, visiting-controller rules, rating rules, or activity exceptions.</p><p>For a final decision, check the current official VATSIM, Division, and ARTCC guidance.</p></section></div>
 </body>
 </html>
