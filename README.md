@@ -17,21 +17,16 @@ project/
 ├─ .gitignore
 └─ public/
    ├─ index.html
-   ├─ app-v4.js
-   ├─ site-v4.css
+   ├─ app-v5.js
+   ├─ site-v5.css
+   ├─ img/icons/
+   ├─ fonts/
    ├─ api.php
    └─ .htaccess
 ```
 
-## Baota deployment
+## Callsign data
 
-Set the website root to:
-
-```text
-project/public
-```
-
-Enable PHP with cURL. No Node.js, PM2, or SQL database is required.
 Callsign lookup data lives in `callsign-data.php`, a plain PHP array, so `pdo_sqlite` is not required at runtime. The file is generated from `vatsim.sqlite` (17,809 airports and 1,235 FIR records from the VATSpy data project) and `tools/vnas_facilities.json` (the VATUSA vNAS facility tree: every ARTCC, TRACON, tower and position prefix). After updating either source, rebuild it locally with:
 
 ```bash
